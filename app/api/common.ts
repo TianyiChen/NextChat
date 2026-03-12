@@ -40,6 +40,19 @@ export async function requestOpenai(req: NextRequest) {
     baseUrl = baseUrl.slice(0, -1);
   }
 
+  // Extract basic auth credentials from URL (e.g. https://user:pass@host) and
+  // convert to an Authorization header, since the Fetch API forbids userinfo in URLs.
+  let basicAuthHeader: Record<string, string> = {};
+  try {
+    const parsed = new URL(baseUrl);
+    if (parsed.username || parsed.password) {
+      basicAuthHeader["Authorization"] = `Basic ${btoa(`${parsed.username}:${parsed.password}`)}`;
+      parsed.username = "";
+      parsed.password = "";
+      baseUrl = parsed.toString().replace(/\/$/, "");
+    }
+  } catch {}
+
   console.log("[Proxy] ", path);
   console.log("[Base Url]", baseUrl);
 
@@ -94,7 +107,10 @@ export async function requestOpenai(req: NextRequest) {
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
-      [authHeaderName]: authValue,
+      // Apply basic auth from URL only when no explicit auth header was provided.
+      // Must come before [authHeaderName] so an explicit key always wins.
+      ...basicAuthHeader,
+      ...(authValue ? { [authHeaderName]: authValue } : {}),
       ...(serverConfig.openaiOrgId && {
         "OpenAI-Organization": serverConfig.openaiOrgId,
       }),

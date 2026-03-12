@@ -360,6 +360,15 @@ export function getHeaders(ignoreHeaders: boolean = false) {
     headers["Authorization"] = getBearerToken(
       ACCESS_CODE_PREFIX + accessStore.accessCode,
     );
+  } else if (accessStore.useCustomConfig && !isAzure && !isAnthropic && !isGoogle) {
+    // If no explicit API key is set but the custom OpenAI URL contains basic auth
+    // credentials (https://user:pass@host), extract and use them as a Basic auth header.
+    try {
+      const parsed = new URL(accessStore.openaiUrl);
+      if (parsed.username || parsed.password) {
+        headers["Authorization"] = `Basic ${btoa(`${parsed.username}:${parsed.password}`)}`;
+      }
+    } catch {}
   }
 
   return headers;

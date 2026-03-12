@@ -115,6 +115,18 @@ export class ChatGPTApi implements LLMApi {
       baseUrl = "https://" + baseUrl;
     }
 
+    // Strip basic auth credentials from URL — browsers throw when fetch() receives
+    // a URL with userinfo (https://user:pass@host). Credentials are handled via
+    // Authorization header in getHeaders() instead.
+    try {
+      const parsed = new URL(baseUrl);
+      if (parsed.username || parsed.password) {
+        parsed.username = "";
+        parsed.password = "";
+        baseUrl = parsed.toString().replace(/\/$/, "");
+      }
+    } catch {}
+
     console.log("[Proxy Endpoint] ", baseUrl, path);
 
     // try rebuild url, when using cloudflare ai gateway in client
